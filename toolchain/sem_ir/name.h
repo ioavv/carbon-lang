@@ -5,6 +5,8 @@
 #ifndef CARBON_TOOLCHAIN_SEM_IR_NAME_H_
 #define CARBON_TOOLCHAIN_SEM_IR_NAME_H_
 
+#include <optional>
+#include <stdexcept>
 #include "toolchain/base/value_ids.h"
 #include "toolchain/base/value_store.h"
 #include "toolchain/sem_ir/ids.h"
@@ -27,11 +29,19 @@ class NameStoreWrapper {
  public:
   explicit NameStoreWrapper(
       const CanonicalValueStore<IdentifierId>* identifiers)
-      : identifiers_(identifiers) {}
+      : identifiers_(identifiers) {
+        if (!identifiers) {
+            throw std::invalid_argument("Invalid identifiers pointer");
+        }
+      }
+
+  // Prevent copying to avoid pointer ownership issues
+  NameStoreWrapper(const NameStoreWrapper&) = delete;
+  auto operator=(const NameStoreWrapper&) -> NameStoreWrapper& = delete;
 
   // Returns the requested name as a string, if it is an identifier name. This
   // returns std::nullopt for special names.
-  auto GetAsStringIfIdentifier(NameId name_id) const
+  [[nodiscard]] auto GetAsStringIfIdentifier(NameId name_id) const
       -> std::optional<llvm::StringRef> {
     if (auto identifier_id = name_id.AsIdentifierId();
         identifier_id.is_valid()) {
@@ -42,13 +52,13 @@ class NameStoreWrapper {
 
   // Returns the requested name as a string for formatted output. This returns
   // `"r#name"` if `name` is a keyword.
-  auto GetFormatted(NameId name_id) const -> llvm::StringRef;
+  [[nodiscard]] auto GetFormatted(NameId name_id) const -> llvm::StringRef;
 
   // Returns a best-effort name to use as the basis for SemIR and LLVM IR names.
   // This is always identifier-shaped, but may be ambiguous, for example if
   // there is both a `self` and an `r#self` in the same scope. Returns "" for an
   // invalid name.
-  auto GetIRBaseName(NameId name_id) const -> llvm::StringRef;
+  [[nodiscard]] auto GetIRBaseName(NameId name_id) const -> llvm::StringRef;
 
  private:
   const CanonicalValueStore<IdentifierId>* identifiers_;
